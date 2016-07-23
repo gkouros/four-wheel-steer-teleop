@@ -75,7 +75,7 @@ class FourWheelSteerTeleop:
         # load max speed, max steering angle, wheelbase, cmd topic
         self.cmd_topic = rospy.get_param('cmd_topic', '/cmd_vel')
         self.wheelbase = rospy.get_param('wheelbase', 0.32)
-        self.max_speed = rospy.get_param('max_speed', 0.2)
+        self.max_speed = rospy.get_param('max_speed', 0.5)
         self.max_steering_angle = rospy.get_param('max_steering_angle', 0.4)
 
         self.mode = 0  # 0: counter steer mode, 1: crab steer mode
@@ -93,8 +93,9 @@ class FourWheelSteerTeleop:
         cmd_msg = Twist()
         cmd_msg.linear.x = self.speed * cos(self.steering_angle * self.mode)
         cmd_msg.linear.y = self.speed * sin(self.steering_angle * self.mode)
-        cmd_msg.angular.z = 2 * self.speed * tan(self.steering_angle) / \
-            self.wheelbase * abs(self.mode-1)
+        cmd_msg.angular.z = 2 * self.speed \
+                * cos(self.steering_angle * self.mode) \
+                * tan(self.steering_angle) * (1 - self.mode) / self.wheelbase
         self.drive_pub.publish(cmd_msg)
 
     def print_state(self):
