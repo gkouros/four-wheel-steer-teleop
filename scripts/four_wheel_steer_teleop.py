@@ -73,10 +73,10 @@ class FourWheelSteerTeleop:
 
     def __init__(self):
         # load max speed, max steering angle, wheelbase, cmd topic
-        self.cmd_topic = rospy.get_param('cmd_topic', '/cmd_vel')
-        self.wheelbase = rospy.get_param('wheelbase', 0.32)
-        self.max_speed = rospy.get_param('max_speed', 0.5)
-        self.max_steering_angle = rospy.get_param('max_steering_angle', 0.4)
+        self.cmd_topic = rospy.get_param('~cmd_topic', '/cmd_vel')
+        self.wheelbase = rospy.get_param('~wheelbase', 0.32)
+        self.max_speed = rospy.get_param('~max_speed', 0.5)
+        self.max_steering_angle = rospy.get_param('~max_steering_angle', 0.4)
 
         self.mode = 0  # 0: counter steer mode, 1: crab steer mode
         self.speed_range = [-float(self.max_speed), float(self.max_speed)]

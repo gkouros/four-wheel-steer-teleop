@@ -2,7 +2,7 @@
 
   <arg name="max_speed" default="0.5" />
   <arg name="max_steering_angle" default="0.4" />
-  <arg name="cmd_topic" default="cmd_vel" />
+  <arg name="cmd_topic" default="/cmd_vel" />
 
   <node
     name="four_wheel_steer_teleop"
