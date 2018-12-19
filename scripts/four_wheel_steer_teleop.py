@@ -57,7 +57,9 @@ control_keys = {
     'left'  : '\x44',
     'space' : '\x20',
     'tab'   : '\x09',
-    'mode'  : '\x6d'}
+    'mode'  : '\x6d',
+    'CW'     : '\x7A',
+    'CCW'     : '\x78',}
 
 key_bindings = {
     '\x41' : ( 1.0 , 0.0),
@@ -66,7 +68,9 @@ key_bindings = {
     '\x44' : ( 0.0 , 1.0),
     '\x20' : ( 0.0 , 0.0),
     '\x09' : ( 0.0 , 0.0),
-    '\x6d' : ( 0.0 , 0.0)}
+    '\x6d' : ( 0.0 , 0.0),
+    '\x7A' : ( 1.0 , 0.0),
+    '\x78' : ( -1.0 , 0.0),}
 
 
 class FourWheelSteerTeleop:
@@ -74,8 +78,8 @@ class FourWheelSteerTeleop:
     def __init__(self):
         # load max speed, max steering angle, wheelbase, cmd topic
         self.cmd_topic = rospy.get_param('~cmd_topic', '/cmd_vel')
-        self.wheelbase = rospy.get_param('~wheelbase', 0.32)
-        self.max_speed = rospy.get_param('~max_speed', 0.5)
+        self.wheelbase = rospy.get_param('~wheelbase', 0.1)
+        self.max_speed = rospy.get_param('~max_speed', 1.5)
         self.max_steering_angle = rospy.get_param('~max_steering_angle', 0.4)
 
         self.mode = 0  # 0: counter steer mode, 1: crab steer mode
@@ -83,6 +87,7 @@ class FourWheelSteerTeleop:
         self.steering_angle_range = [-float(self.max_steering_angle),
                                      float(self.max_steering_angle)]
         self.speed = 0
+        self.rotspeed = 0
         self.steering_angle = 0
         self.drive_pub = rospy.Publisher(self.cmd_topic, Twist, queue_size=1)
         rospy.Timer(rospy.Duration(1.0/5.0), self.pub_callback, oneshot=False)
@@ -93,6 +98,7 @@ class FourWheelSteerTeleop:
         cmd_msg = Twist()
         cmd_msg.linear.x = self.speed * cos(self.steering_angle * self.mode)
         cmd_msg.linear.y = self.speed * sin(self.steering_angle * self.mode)
+        cmd_msg.linear.z = self.rotspeed
         cmd_msg.angular.z = 2 * self.speed \
                 * cos(self.steering_angle * self.mode) \
                 * tan(self.steering_angle) * (1 - self.mode) / self.wheelbase
@@ -114,6 +120,9 @@ class FourWheelSteerTeleop:
                       '\033[34;1mSpeed: \033[32;1m%0.2f m/s, '
                       '\033[34;1mSteer Angle: \033[32;1m%0.2f rad\033[0m',
                       self.speed, self.steering_angle)
+        rospy.loginfo('\x1b[1M\rot '
+                      '\033[34;1mZspd: \033[32;1m%0.2f m/s',
+                      self.rotspeed) 
 
     def get_key(self):
         tty.setraw(sys.stdin.fileno())
@@ -122,7 +131,6 @@ class FourWheelSteerTeleop:
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.settings)
         return key
 
-
     def key_loop(self):
         self.settings = termios.tcgetattr(sys.stdin)
         while 1:
@@ -130,26 +138,46 @@ class FourWheelSteerTeleop:
             if key in key_bindings.keys():
                 if key == control_keys['space']:
                     self.speed = 0.0
+                    self.rotspeed = 0.0
                 elif key == control_keys['tab']:
                     self.steering_angle = 0.0
+                    self.rotspeed = 0.0
                 elif key == control_keys['mode']:
+                    self.rotspeed = 0.0
                     self.mode = abs(self.mode-1)
+                        #### 
+                elif key == control_keys['CW']:
+                    print("CW steering")
+                    self.steering_angle = 0.0
+                    self.speed = 0.0
+                    if (self.rotspeed <self.max_speed):
+                        self.rotspeed += 0.1 
+                elif key == control_keys['CCW']:
+                    print("CCW steering")
+                    self.steering_angle = 0.0
+                    self.speed = 0.0
+                    if (self.rotspeed > -self.max_speed):
+                        self.rotspeed -= 0.1            
+                            ####               
                 else:
-                    self.speed = \
-                            self.speed + key_bindings[key][0] * \
-                            self.max_speed / 5
-                    self.steering_angle = \
-                            self.steering_angle + key_bindings[key][1] * \
-                            self.max_steering_angle / 5
-                    self.speed = clip(
-                        self.speed, self.speed_range[0], self.speed_range[1])
-                    self.steering_angle = clip(
-                        self.steering_angle,
-                        self.steering_angle_range[0],
-                        self.steering_angle_range[1])
+                    if(self.rotspeed==0): 
+                        self.speed = \
+                                self.speed + key_bindings[key][0] * \
+                                self.max_speed / 50
+                        self.steering_angle = \
+                                self.steering_angle + key_bindings[key][1] * \
+                                self.max_steering_angle / 50
+                        self.speed = clip(
+                            self.speed, self.speed_range[0], self.speed_range[1])
+                        self.steering_angle = clip(
+                            self.steering_angle,
+                            self.steering_angle_range[0],
+                            self.steering_angle_range[1])
                 self.print_state()
             elif key == '\x03' or key == '\x71':  # ctr-c or q
                 break
+
+                
             else:
                 continue
         self.finalize()
